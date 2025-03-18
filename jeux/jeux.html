@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jeu de Tir - Space Shooter</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      overflow: hidden;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #111;
+    }
+
+    .info {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.5em;
+    }
+  </style>
+</head>
+<body>
+  <!-- Le canvas est initialisé dans le HTML et récupéré dans le JavaScript 
+   pour permettre le dessin et les interactions.-->
+  <div class="info">Score: <span id="score">0</span></div>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+
+    // Dimensions du canvas
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+
+    // Vaisseau du joueur
+    const player = {
+      x: canvasWidth / 2 - 25,
+      y: canvasHeight - 60,
+      width: 50,
+      height: 50,
+      color: 'cyan',
+      speed: 7,
+      dx: 0
+    };
+
+    // Liste des tirs
+    const bullets = [];
+
+    // Liste des ennemis
+    const enemies = [];
+    let enemySpawnInterval = 2000; // Temps entre chaque apparition d'ennemi (ms)
+
+    let score = 0;
+    let gameOver = false;
+
+    // Fonction pour dessiner un rectangle (vaisseau, tir, ennemi)
+    function drawRect(x, y, width, height, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, width, height);
+    }
+    
+    // Fonctions de Mouvement Gère le déplacement du joueur
+    function movePlayer() {
+      player.x += player.dx;
+
+      // Empêche le joueur de sortir des limites
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.width > canvasWidth) player.x = canvasWidth - player.width;
+    }
+
+    // Gère le mouvement des tirs
+    function moveBullets() {
+      bullets.forEach((bullet, index) => {
+        bullet.y -= bullet.speed;
+
+        // Supprime le tir s'il sort de l'écran
+        if (bullet.y < 0) {
+          bullets.splice(index, 1);
+        }
+      });
+    }
+
+    // Gère le mouvement des ennemis
+    function moveEnemies() {
+      enemies.forEach((enemy, index) => {
+        enemy.y += enemy.speed;
+
+        // Si l'ennemi atteint le bas de l'écran, le jeu est terminé
+        if (enemy.y + enemy.height > canvasHeight) {
+          gameOver = true;
+        }
+      });
+    }
+
+    // Vérifie les collisions entre les tirs et les ennemis
+    function checkCollisions() {
+      bullets.forEach((bullet, bulletIndex) => {
+        enemies.forEach((enemy, enemyIndex) => {
+          if (
+            bullet.x < enemy.x + enemy.width &&
+            bullet.x + bullet.width > enemy.x &&
+            bullet.y < enemy.y + enemy.height &&
+            bullet.y + bullet.height > enemy.y
+          ) {
+            // Collision détectée : supprime l'ennemi et le tir
+            bullets.splice(bulletIndex, 1);
+            enemies.splice(enemyIndex, 1);
+
+            // Augmente le score
+            score += 10;
+            scoreElement.textContent = score;
+          }
+        });
+      });
+    }
+
+    // Affiche le joueur
+    function drawPlayer() {
+      drawRect(player.x, player.y, player.width, player.height, player.color);
+    }
+
+    // Affiche les tirs
+    function drawBullets() {
+      bullets.forEach(bullet => {
+        drawRect(bullet.x, bullet.y, bullet.width, bullet.height, bullet.color);
+      });
+    }
+
+    // Affiche les ennemis
+    function drawEnemies() {
+      enemies.forEach(enemy => {
+        drawRect(enemy.x, enemy.y, enemy.width, enemy.height, enemy.color);
+      });
+    }
+
+    // Fonction principale du jeu
+    function gameLoop() {
+      if (gameOver) {
+        alert(`Game Over! Ton score est de : ${score}`);
+        document.location.reload();
+        return;
+      }
+
+      // Efface l'écran
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+      // Dessine les éléments
+      drawPlayer();
+      drawBullets();
+      drawEnemies();
+
+      // Gère les mouvements
+      movePlayer();
+      moveBullets();
+      moveEnemies();
+
+      // Vérifie les collisions
+      checkCollisions();
+
+      // Boucle continue
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Ajoute un tir
+    function shoot() {
+      bullets.push({
+        x: player.x + player.width / 2 - 5,
+        y: player.y,
+        width: 5,
+        height: 10,
+        color: 'yellow',
+        speed: 10
+      });
+    }
+
+    // Ajoute un ennemi
+    function spawnEnemy() {
+      const enemyWidth = 50;
+      const enemyHeight = 50;
+
+      enemies.push({
+        x: Math.random() * (canvasWidth - enemyWidth),
+        y: -enemyHeight,
+        width: enemyWidth,
+        height: enemyHeight,
+        color: 'red',
+        speed: 3 + Math.random() * 2 // Vitesse aléatoire
+      });
+    }
+
+    // Écouteur pour les touches
+    document.addEventListener('keydown', event => {
+      if (event.key === 'ArrowLeft') {
+        player.dx = -player.speed;
+      } else if (event.key === 'ArrowRight') {
+        player.dx = player.speed;
+      } else if (event.key === ' ') {
+        shoot();
+      }
+    });
+
+    document.addEventListener('keyup', event => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        player.dx = 0;
+      }
+    });
+
+    // Lancement du jeu
+    setInterval(spawnEnemy, enemySpawnInterval); // Ajoute un ennemi toutes les 2 secondes
+    gameLoop(); // Démarre la boucle principale
+  </script>
+  
+</body>
+
+</html>
